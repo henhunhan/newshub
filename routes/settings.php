@@ -7,28 +7,55 @@ use Inertia\Inertia;
 use App\Models\Category;
 
 Route::middleware('auth')->group(function () {
+
+    // Redirect default settings
     Route::redirect('settings', 'settings/profile');
 
-    Route::get('settings/profile', function () {
-        $categories = Category::all();
-        return Inertia::render('settings/profile', [
-            'categories' => $categories,
-        ]);
-    })->name('profile.edit');
+    /*
+    |--------------------------------------------------------------------------
+    | SETTINGS PAGES (INERTIA)
+    |--------------------------------------------------------------------------
+    */
 
-    Route::patch('settings/profile', [ProfileController::class, 'update'])->name('profile.update');
-    Route::delete('settings/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
+    Route::get('settings/profile', function () {
+        return Inertia::render('settings/profile', [
+            'categories' => Category::all(),
+        ]);
+    })->name('settings.profile');
 
     Route::get('settings/password', function () {
-        $categories = Category::all();
         return Inertia::render('settings/password', [
-            'categories' => $categories,
+            'categories' => Category::all(),
         ]);
     })->name('password.edit');
-
-    Route::put('settings/password', [PasswordController::class, 'update'])->name('password.update');
 
     Route::get('settings/appearance', function () {
         return Inertia::render('settings/appearance');
     })->name('appearance');
+
+    /*
+    |--------------------------------------------------------------------------
+    | PROFILE ACTIONS
+    |--------------------------------------------------------------------------
+    */
+
+    // Halaman edit profile
+    Route::get('/profile', [ProfileController::class, 'edit'])
+        ->name('profile.edit');
+
+    // Update data profile (PATCH)
+    Route::patch('/settings/profile/personal', [ProfileController::class, 'updatePersonal'])
+        ->name('profile.personal.update');
+
+    Route::patch('/settings/profile/account', [ProfileController::class, 'updateAccount'])
+        ->name('profile.account.update');
+
+    /*
+    |--------------------------------------------------------------------------
+    | PASSWORD ACTION
+    |--------------------------------------------------------------------------
+    */
+
+    Route::put('settings/password', [PasswordController::class, 'update'])
+        ->name('password.update');
 });

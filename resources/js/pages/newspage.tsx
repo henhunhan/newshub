@@ -2,7 +2,7 @@ import { Head, Link, usePage } from '@inertiajs/react';
 import { Search, ChevronsUpDown } from 'lucide-react';
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent } from '@/components/ui/dropdown-menu';
 import { UserInfo } from '@/components/user-info';
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { router } from '@inertiajs/react';
 import type { Auth } from '@/types';
 
@@ -44,9 +44,31 @@ type Props = {
 
 
 
-export default function Newspage({ news, categories, popularNews = [], relatedNews = [], comments = [] }: Props) {
+export default function Newspage({ news, popularNews = [], relatedNews = [], comments = [] }: Props) {
     const { auth } = usePage().props as { auth: Auth };
+    const [search, setSearch] = useState('');
     const [comment, setComment] = useState('');
+    const [showSearchBar, setShowSearchBar] = useState(false);
+    const searchInputRef = useRef<HTMLInputElement>(null);
+
+    // Fokus ke input saat search bar muncul
+    useEffect(() => {
+        if (showSearchBar && searchInputRef.current) {
+            searchInputRef.current.focus();
+        }
+    }, [showSearchBar]);
+
+    const handleSearch = (e: React.FormEvent) => {
+        e.preventDefault();
+        if (search.trim() !== '') {
+            router.get(route('dashboard'), { search });
+            router.get(route('home'), { search });
+        }
+    };
+
+    const handleSearchIconClick = () => {
+        setShowSearchBar((prev) => !prev);
+    };
 
     const handleComment = (e: React.FormEvent) => {
         e.preventDefault();
@@ -56,46 +78,67 @@ export default function Newspage({ news, categories, popularNews = [], relatedNe
         });
     };
 
+        const handleLogout = (e: React.MouseEvent) => {
+            e.preventDefault();
+            router.post(route('logout'));
+        };
+
     return (
         <>
             <Head title={news.title} />
-            <div className="min-h-screen bg-gray-50">
+            <div className="min-h-screen">
                 {/* Header */}
-                <header className="w-full bg-white border-b border-gray-200 sticky top-0 z-50">
-                    <div className="max-w-7xl mx-auto flex items-center justify-between py-4 px-6">
-                        {/* Logo & Navigation */}
-                        <div className="flex items-center gap-8">
-                            <Link href={route('dashboard')}>
-                                <span className="text-2xl font-bold text-blue-600 cursor-pointer hover:text-blue-700">NewsHub</span>
-                            </Link>
-                            <nav className="flex gap-6 text-base font-medium text-gray-700">
-                                {categories?.map((cat) => (
-                                    <Link
-                                        key={cat.id}
-                                        href={route('categories.show', { slug: cat.slug })}
-                                        className="hover:text-blue-600"
-                                    >
-                                        {cat.name}
-                                    </Link>
-                                ))}
-                            </nav>
+            <header className="w-full border-gray-700 top-0 z-50">
+                <div className="w-full mx-auto px-6 py-1">
+                    {/* Top Section */}
+                    <div className="flex items-center justify-between mb-6">
+                        {/* Search & Bell */}
+                        <div className="flex items-center gap-4" style={{ minWidth: '120px' }}>
+                            <button
+                                type="button"
+                                onClick={handleSearchIconClick}
+                                className="text-gray-400 cursor-pointer w-5 h-5 flex items-center justify-center focus:outline-none"
+                                aria-label="Show search bar"
+                            >
+                                <Search className="w-5 h-5" />
+                            </button>
+                            {showSearchBar && (
+                                <form onSubmit={handleSearch} className="flex items-center gap-2 animate-fade-in absolute left-0 mt-10 bg-white z-10 p-2 rounded shadow" style={{ minWidth: '220px' }}>
+                                    <input
+                                        ref={searchInputRef}
+                                        type="text"
+                                        placeholder="Cari berita..."
+                                        value={search}
+                                        onChange={e => setSearch(e.target.value)}
+                                        className="border border-gray-300 rounded-md px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
+                                        name="search"
+                                    />
+                                    <button type="submit" className="p-1 text-gray-400 hover:text-blue-500">
+                                        Go
+                                    </button>
+                                </form>
+                            )}
+                            <i className="fas fa-bell text-gray-400 w-5 h-5"></i>
                         </div>
-                        {/* Search & User */}
-                        <div className="flex items-center gap-8">
-                            <form className="flex items-center border border-gray-300 rounded px-3 py-1 text-sm gap-2">
-                                <input
-                                    type="text"
-                                    placeholder="Search news..."
-                                    className="w-56 text-md focus:outline-none focus:ring-0"
-                                />
-                                <button type="submit">
-                                    <Search className="text-gray-500 cursor-pointer w-5 h-5" />
-                                </button>
-                            </form>
-                            {auth?.user ? (
+
+                        {/* NewsHub & Tagline - tetap di tengah */}
+                        <div className="flex-1 flex flex-col items-center justify-center cursor-pointer" onClick={() => {
+                            if (auth.user) {
+                                router.get(route('dashboard'));
+                            } else {
+                                router.get(route('home'));
+                            }
+                        }}>
+                            <h1 className="text-xl font-bold text-black font-serif">NewsHub</h1>
+                            <p className="text-gray-400 italic text-sm">Your Trusted News Source</p>
+                        </div>
+
+                        {/* User menu */}
+                        <div className="flex items-center gap-4">
+                            {auth.user ? (
                                 <DropdownMenu>
-                                    <DropdownMenuTrigger className='flex flex-row items-center gap-3 rounded-sm py-1 bg-gray-50 px-2'>
-                                        <UserInfo user={auth.user} />
+                                    <DropdownMenuTrigger className='flex flex-row items-center gap-3 rounded-sm py-1'>
+                                        <UserInfo user={auth.user}/>
                                         <ChevronsUpDown className="ml-auto size-4" />
                                     </DropdownMenuTrigger>
                                     <DropdownMenuContent align="end" className="min-w-40 rounded-lg shadow">
@@ -112,7 +155,7 @@ export default function Newspage({ news, categories, popularNews = [], relatedNe
                                         </Link>
                                         <form method="POST" action={route('logout')}>
                                             <button
-                                                type="submit"
+                                                onClick={handleLogout}
                                                 className="w-full text-left px-4 py-2 text-sm hover:bg-gray-100 text-red-600"
                                             >
                                                 Log Out
@@ -123,20 +166,23 @@ export default function Newspage({ news, categories, popularNews = [], relatedNe
                             ) : (
                                 <Link
                                     href={route('login')}
-                                    className="bg-blue-600 text-white px-4 py-1.5 rounded font-semibold hover:bg-blue-700 transition"
+                                    className="text-black font-semibold text-md py-3 px-2"
                                 >
-                                    Sign In
+                                    Sign in
                                 </Link>
                             )}
                         </div>
                     </div>
-                </header>
+
+                    {/* Logo & Tagline */}
+                </div>
+            </header>
 
                 {/* Main Content */}
-                <main className="max-w-7xl mx-auto w-full px-6 py-10 flex flex-col lg:flex-row gap-8">
+                <main className="max-w-8xl mx-auto w-full pl-16 pr-8 py-10 flex flex-col lg:flex-row gap-8">
                     {/* Main Article */}
                     <div className="flex-1">
-                        <div className="bg-white rounded-xl shadow p-8 mb-8">
+                        <div className="mb-8">
                             <div className="flex items-center gap-4 mb-4">
                                 <span className="bg-blue-100 text-blue-600 px-3 py-1 rounded-full text-xs font-semibold">{news.category}</span>
                                 <span className="text-gray-400 text-xs">
@@ -201,14 +247,14 @@ export default function Newspage({ news, categories, popularNews = [], relatedNe
                     {/* Sidebar */}
                     <div className="w-full lg:w-80 flex flex-col gap-8">
                         {/* Popular News */}
-                        <section className="bg-white rounded-xl shadow p-6">
-                            <h3 className="font-semibold text-lg mb-4">Popular News</h3>
+                        <section className="">
+                            <h3 className="font-semibold text-lg mb-4 border-b border-gray-400">Popular News</h3>
                             <div className="flex flex-col gap-4">
                                 {(popularNews.length > 0 ? popularNews : [news]).map((item) => (
                                     <Link
                                         key={item.id}
                                         href={route('newspage', { slug: item.slug })}
-                                        className="flex gap-3 hover:bg-gray-100 rounded p-2 transition"
+                                        className="flex gap-3 bg-white rounded shadow-sm p-2 hover:bg-gray-100 transition"
                                     >
                                         <img src={item.thumbnail_image} alt={item.title} className="w-20 h-14 rounded object-cover" />
                                         <div>
@@ -220,14 +266,14 @@ export default function Newspage({ news, categories, popularNews = [], relatedNe
                             </div>
                         </section>
                         {/* Related News */}
-                        <section className="bg-white rounded-xl shadow p-6">
-                            <h3 className="font-semibold text-lg mb-4">Related News</h3>
+                        <section className="">
+                            <h3 className="font-semibold text-lg mb-4 border-b border-gray-400">Related News</h3>
                             <div className="flex flex-col gap-4">
                                 {(relatedNews.length > 0 ? relatedNews : []).map((item) => (
                                     <Link
                                         key={item.id}
                                         href={route('newspage', { slug: item.slug })}
-                                        className="flex gap-3 hover:bg-gray-100 rounded p-2 transition"
+                                        className="flex gap-3 bg-white rounded shadow-sm p-2 hover:bg-gray-100 transition"
                                     >
                                         <img src={item.thumbnail_image} alt={item.title} className="w-20 h-14 rounded object-cover" />
                                         <div>

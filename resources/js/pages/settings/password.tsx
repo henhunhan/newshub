@@ -1,26 +1,16 @@
 import { type SharedData } from '@/types';
 import { Head, Link, usePage, useForm } from '@inertiajs/react';
-import { Search, ChevronsUpDown } from 'lucide-react';
 import { UserInfo } from '@/components/user-info';
-import { UserMenuContent } from '@/components/user-menu-content';
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent } from '@/components/ui/dropdown-menu';
 import React, { useRef } from 'react';
 import InputError from '@/components/input-error';
 import { Transition } from '@headlessui/react';
+import { router } from '@inertiajs/react';
 
-type Category = {
-    id: number;
-    name: string;
-    slug: string;
-    description?: string | null;
-};
+import { ChevronsUpDown } from 'lucide-react';
 
-type PageProps = {
-    categories: Category[];
-};
 
 export default function Password() {
-    const { categories } = usePage<PageProps>().props;
     const passwordInput = useRef<HTMLInputElement>(null);
     const currentPasswordInput = useRef<HTMLInputElement>(null);
     const { auth } = usePage<SharedData>().props;
@@ -56,59 +46,77 @@ export default function Password() {
         });
     };
 
+    const handleLogout = (e: React.MouseEvent) => {
+            e.preventDefault();
+            router.post(route('logout'));
+        };
+
     return (
         <>
             <Head title="Password Settings" />
             <div className="min-h-screen bg-gray-50 flex flex-col">
                 {/* Header */}
-                <header className="w-full bg-white border-b border-gray-200 sticky top-0 z-50">
-                    <div className="max-w-7xl mx-auto flex items-center justify-between py-4 px-6">
-                        <div className="flex items-center gap-8">
-                            <Link href={route('home')}>
-                                <span className="text-2xl font-bold text-blue-600 cursor-pointer hover:text-blue-700 focus:outline-none focus:ring-0">NewsHub</span>
-                            </Link>
-                        <nav className="flex gap-6 text-base font-medium text-gray-700">
-                            {categories?.map((cat) => (
-                                <Link
-                                    key={cat.id}
-                                    href={route('categories.show', { slug: cat.slug })}
-                                    className="hover:text-blue-600"
-                                >
-                                    {cat.name}
-                                </Link>
-                            ))}
-                        </nav>
+            <header className="w-full border-gray-700 top-0 z-50">
+                <div className="w-full mx-auto px-6 py-1">
+                    {/* Top Section */}
+                    <div className="flex items-center justify-between mb-6 ml-24">
+                        {/* Search & Bell */}
+                        {/* NewsHub & Tagline - tetap di tengah */}
+                        <div className="flex-1 flex flex-col items-center justify-center cursor-pointer" onClick={() => {
+                            if (auth.user) {
+                                router.get(route('dashboard'));
+                            } else {
+                                router.get(route('home'));
+                            }
+                        }}>
+                            <h1 className="text-xl font-bold text-black font-serif">NewsHub</h1>
+                            <p className="text-gray-400 italic text-sm">Your Trusted News Source</p>
                         </div>
-                        <div className="flex items-center gap-8">
-                            <form className="flex items-center border border-gray-300 rounded px-3 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-blue-200 gap-4">
-                                <input
-                                    type="text"
-                                    placeholder="Search news..."
-                                    className="w-max text-md focus:outline-none focus:ring-0"
-                                />
-                                <Search className="text-gray-500 cursor-pointer w-4" type="submit" />
-                            </form>
+
+                        {/* User menu */}
+                        <div className="flex items-center gap-4">
                             {auth.user ? (
                                 <DropdownMenu>
                                     <DropdownMenuTrigger className='flex flex-row items-center gap-3 rounded-sm py-1'>
-                                        <UserInfo user={auth.user} />
+                                        <UserInfo user={auth.user}/>
                                         <ChevronsUpDown className="ml-auto size-4" />
                                     </DropdownMenuTrigger>
                                     <DropdownMenuContent align="end" className="min-w-40 rounded-lg shadow">
-                                        <UserMenuContent user={auth.user} />
+                                        <div className="px-4 py-2 text-sm">
+                                            <div className="font-semibold">{auth.user.name}</div>
+                                            <div className="text-gray-500">{auth.user.email}</div>
+                                        </div>
+                                        <div className="border-t my-2" />
+                                        <Link
+                                            href={route('profile.edit')}
+                                            className="block px-4 py-2 text-sm hover:bg-gray-100"
+                                        >
+                                            Profile
+                                        </Link>
+                                        <form method="POST" action={route('logout')}>
+                                            <button
+                                                onClick={handleLogout}
+                                                className="w-full text-left px-4 py-2 text-sm hover:bg-gray-100 text-red-600"
+                                            >
+                                                Log Out
+                                            </button>
+                                        </form>
                                     </DropdownMenuContent>
                                 </DropdownMenu>
                             ) : (
                                 <Link
                                     href={route('login')}
-                                    className="bg-blue-600 text-white px-4 py-1.5 rounded font-semibold hover:bg-blue-700 transition"
+                                    className="text-black font-semibold text-md py-3 px-2"
                                 >
-                                    Sign In
+                                    Sign in
                                 </Link>
                             )}
                         </div>
                     </div>
-                </header>
+
+                    {/* Logo & Tagline */}
+                </div>
+            </header>
 
                 {/* Main Content */}
                 <main className="flex-1 max-w-7xl mx-auto w-full px-6 py-10">

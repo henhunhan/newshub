@@ -1,12 +1,13 @@
 import { type SharedData } from '@/types';
 import { Head, Link, usePage, useForm } from '@inertiajs/react';
-import { Search, ChevronsUpDown } from 'lucide-react';
+import { ChevronsUpDown } from 'lucide-react';
 import { UserInfo } from '@/components/user-info';
-import { UserMenuContent } from '@/components/user-menu-content';
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent } from '@/components/ui/dropdown-menu';
-import React, { useState} from 'react';
+import React, { useState, useRef, useEffect } from 'react';
+import { router } from '@inertiajs/react';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 
-type ProfileForm = {
+type PersonalForm = {
     name: string;
     username: string;
     gender: string;
@@ -14,25 +15,23 @@ type ProfileForm = {
     province: string;
     city: string;
     address: string;
+    avatar?: File | null;
+     _method?: string; // untuk metode PATCH
+};
+
+type AccountForm = {
     email: string;
     backup_email: string;
     phone: string;
     password: string;
 };
 
-type Category = {
-    id: number;
-    name: string;
-    slug: string;
-    description?: string | null;
-};
-
-type PageProps = {
-    categories: Category[];
-};
+const handleLogout = (e: React.MouseEvent) => {
+        e.preventDefault();
+        router.post(route('logout'));
+    };
 
 export default function Profile() {
-    const { categories} = usePage<PageProps>().props;
     const { auth } = usePage<SharedData>().props;
 
     function formatDateToInput(dateStr: string): string {
@@ -45,19 +44,39 @@ export default function Profile() {
 }
 
 
-    const { data, setData, patch, errors, processing } = useForm<Required<ProfileForm>>('', {
-        name: String(auth.user.name ?? ''),
-        username: String(auth.user.username ?? ''),
-        gender: String(auth.user.gender ?? ''),
-        date_of_birth: formatDateToInput(String(auth.user.date_of_birth ?? '')),
-        province: String(auth.user.province ?? ''),
-        city: String(auth.user.city ?? ''),
-        address: String(auth.user.address ?? ''),
+    // Personal info form
+const {
+    data: personalData,
+    setData: setPersonalData,
+    post: postPersonal, // <--- UBAH INI: Pastikan mengambil 'post', bukan 'patch'
+    errors: personalErrors,
+    processing: personalProcessing
+} = useForm<PersonalForm>({
+    name: (auth.user.name ?? ''),
+    username: String(auth.user.username ?? ''),
+    gender: String(auth.user.gender ?? ''),
+    date_of_birth: formatDateToInput(String(auth.user.date_of_birth ?? '')),
+    province: String(auth.user.province ?? ''),
+    city: String(auth.user.city ?? ''),
+    address: String(auth.user.address ?? ''),
+    avatar: null,
+    _method: 'patch', // <--- Pastikan ini tetap ada
+});
+
+    // Account info form
+    const {
+        data: accountData,
+        setData: setAccountData,
+        patch: patchAccount,
+        errors: accountErrors,
+        processing: accountProcessing
+    } = useForm<AccountForm>({
         email: String(auth.user.email ?? ''),
         backup_email: String(auth.user.backup_email ?? ''),
         phone: String(auth.user.phone ?? ''),
         password: '',
-});
+    });
+
 
 
     // Pisahkan edit mode dan success state untuk masing-masing section
@@ -66,25 +85,37 @@ export default function Profile() {
     const [successPersonal, setSuccessPersonal] = useState(false);
     const [successAccount, setSuccessAccount] = useState(false);
 
+    // State untuk gambar profil
+    const [profileImage, setProfileImage] = useState<string | null>(auth.user.avatar ?? null);
+    const fileInputRef = useRef<HTMLInputElement>(null);
+
+    // Tambahkan ini di bawah deklarasi state profileImage
+    useEffect(() => {
+    // Setiap kali halaman di-refresh atau data user diupdate server, 
+    // update state tampilan foto profil
+    if (auth.user.avatar) {
+        setProfileImage(auth.user.avatar);
+    }
+}, [auth.user.avatar]); 
     // Tambahkan state untuk News Preferences
-    const [editPreferences, setEditPreferences] = useState(false);
-        const [preferences, setPreferences] = useState({
-            topics: {
-                Technology: true,
-                Politics: true,
-                Sports: true,
-                Business: true,
-                Entertainment: true,
-                Health: false,
-                Science: false,
-            },
-            notifications: {
-                email: true,
-                breaking: true,
-                newsletter: false,
-            },
-        });
-    const [successPreferences, setSuccessPreferences] = useState(false);
+    // const [editPreferences, setEditPreferences] = useState(false);
+    //     const [preferences, setPreferences] = useState({
+    //         topics: {
+    //             Technology: true,
+    //             Politics: true,
+    //             Sports: true,
+    //             Business: true,
+    //             Entertainment: true,
+    //             Health: false,
+    //             Science: false,
+    //         },
+    //         notifications: {
+    //             email: true,
+    //             breaking: true,
+    //             newsletter: false,
+    //         },
+    //     });
+    // const [successPreferences, setSuccessPreferences] = useState(false);
 
     const sidebarNavItems = [
         { title: 'Profile', href: '/settings/profile' },
@@ -93,22 +124,29 @@ export default function Profile() {
     const currentPath = typeof window !== 'undefined' ? window.location.pathname : '';
 
     // Submit khusus untuk personal info
+    // Submit khusus untuk personal info
     const handlePersonalSubmit = (e: React.FormEvent) => {
         e.preventDefault();
-        patch(route('profile.update'), {
+        if (!editPersonal) return;
+        postPersonal(route('profile.personal.update'), {
+            forceFormData: true,
             preserveScroll: true,
             onSuccess: () => {
                 setEditPersonal(false);
                 setSuccessPersonal(true);
                 setTimeout(() => setSuccessPersonal(false), 3000);
+                router.reload(); // Tambahkan ini untuk refresh halaman dan update auth.user
             },
         });
     };
 
+
+
     // Submit khusus untuk account & security
     const handleAccountSubmit = (e: React.FormEvent) => {
         e.preventDefault();
-        patch(route('profile.update'), {
+        if (!editAccount) return;
+        patchAccount(route('profile.account.update'), {
             preserveScroll: true,
             onSuccess: () => {
                 setEditAccount(false);
@@ -119,89 +157,102 @@ export default function Profile() {
     };
 
     // Handler untuk checkbox topics
-    const handleTopicChange = (topic: string) => {
-        setPreferences((prev) => ({
-            ...prev,
-            topics: {
-                ...prev.topics,
-                [topic]: !prev.topics[topic],
-            },
-        }));
-    };
+    // const handleTopicChange = (topic: string) => {
+    //     setPreferences((prev) => ({
+    //         ...prev,
+    //         topics: {
+    //             ...prev.topics,
+    //             [topic]: !prev.topics[topic],
+    //         },
+    //     }));
+    // };
 // Handler untuk checkbox notifications
-    const handleNotifChange = (notif: string) => {
-        setPreferences((prev) => ({
-            ...prev,
-            notifications: {
-                ...prev.notifications,
-                [notif]: !prev.notifications[notif],
-            },
-        }));
-    };
+    // const handleNotifChange = (notif: string) => {
+    //     setPreferences((prev) => ({
+    //         ...prev,
+    //         notifications: {
+    //             ...prev.notifications,
+    //             [notif]: !prev.notifications[notif],
+    //         },
+    //     }));
+    // };
 
     // Handler untuk submit preferences
-    const handlePreferencesSubmit = (e: React.FormEvent) => {
-        e.preventDefault();
-        // Kirim ke backend jika perlu, contoh:
-        // patch(route('preferences.update'), { data: preferences, ... })
-        setEditPreferences(false);
-        setSuccessPreferences(true);
-        setTimeout(() => setSuccessPreferences(false), 2000);
-    };
+    // const handlePreferencesSubmit = (e: React.FormEvent) => {
+    //     e.preventDefault();
+    //     // Kirim ke backend jika perlu, contoh:
+    //     // patch(route('preferences.update'), { data: preferences, ... })
+    //     setEditPreferences(false);
+    //     setSuccessPreferences(true);
+    //     setTimeout(() => setSuccessPreferences(false), 2000);
+    // };
 
     return (
         <>
             <Head title="Profile Settings" />
             <div className="min-h-screen bg-gray-50 flex flex-col">
                 {/* Header */}
-                <header className="w-full bg-white border-b border-gray-200 sticky top-0 z-50">
-                    <div className="max-w-7xl mx-auto flex items-center justify-between py-4 px-6">
-                        <div className="flex items-center gap-8">
-                            <Link href={route('home')}>
-                                <span className="text-2xl font-bold text-blue-600 cursor-pointer hover:text-blue-700 focus:outline-none focus:ring-0">NewsHub</span>
-                            </Link>
-                        <nav className="flex gap-6 text-base font-medium text-gray-700">
-                            {categories?.map((cat) => (
-                                <Link
-                                    key={cat.id}
-                                    href={route('categories.show', { slug: cat.slug })}
-                                    className="hover:text-blue-600"
-                                >
-                                    {cat.name}
-                                </Link>
-                            ))}
-                        </nav>
+            <header className="w-full border-gray-700 top-0 z-50">
+                <div className="w-full mx-auto px-6 py-1">
+                    {/* Top Section */}
+                    <div className="flex items-center justify-between mb-6 ml-24">
+                        {/* Search & Bell */}
+                        {/* NewsHub & Tagline - tetap di tengah */}
+                        <div className="flex-1 flex flex-col items-center justify-center cursor-pointer" onClick={() => {
+                            if (auth.user) {
+                                router.get(route('dashboard'));
+                            } else {
+                                router.get(route('home'));
+                            }
+                        }}>
+                            <h1 className="text-xl font-bold text-black font-serif">NewsHub</h1>
+                            <p className="text-gray-400 italic text-sm">Your Trusted News Source</p>
                         </div>
-                        <div className="flex items-center gap-8">
-                            <form className="flex items-center border border-gray-300 rounded px-3 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-blue-200 gap-4">
-                                <input
-                                    type="text"
-                                    placeholder="Search news..."
-                                    className="w-max text-md focus:outline-none focus:ring-0"
-                                />
-                                <Search className="text-gray-500 cursor-pointer w-4" type="submit" />
-                            </form>
+
+                        {/* User menu */}
+                        <div className="flex items-center gap-4">
                             {auth.user ? (
                                 <DropdownMenu>
                                     <DropdownMenuTrigger className='flex flex-row items-center gap-3 rounded-sm py-1'>
-                                        <UserInfo user={auth.user} />
+                                        <UserInfo user={auth.user}/>
                                         <ChevronsUpDown className="ml-auto size-4" />
                                     </DropdownMenuTrigger>
                                     <DropdownMenuContent align="end" className="min-w-40 rounded-lg shadow">
-                                        <UserMenuContent user={auth.user} />
+                                        <div className="px-4 py-2 text-sm">
+                                            <div className="font-semibold">{auth.user.name}</div>
+                                            <div className="text-gray-500">{auth.user.email}</div>
+                                        </div>
+                                        <div className="border-t my-2" />
+                                        <Link
+                                            href={route('profile.edit')}
+                                            className="block px-4 py-2 text-sm hover:bg-gray-100"
+                                        >
+                                            Profile
+                                        </Link>
+                                        <form method="POST" action={route('logout')}>
+                                            <button
+                                                onClick={handleLogout}
+                                                className="w-full text-left px-4 py-2 text-sm hover:bg-gray-100 text-red-600"
+                                            >
+                                                Log Out
+                                            </button>
+                                        </form>
                                     </DropdownMenuContent>
                                 </DropdownMenu>
                             ) : (
                                 <Link
                                     href={route('login')}
-                                    className="bg-blue-600 text-white px-4 py-1.5 rounded font-semibold hover:bg-blue-700 transition"
+                                    className="text-black font-semibold text-md py-3 px-2"
                                 >
-                                    Sign In
+                                    Sign in
                                 </Link>
                             )}
                         </div>
                     </div>
-                </header>
+
+                    {/* Logo & Tagline */}
+                </div>
+            </header>
 
                 {/* Main Content */}
                 <main className="flex-1 max-w-7xl mx-auto w-full px-6 py-10">
@@ -253,10 +304,50 @@ export default function Profile() {
                                         </div>
                                         <form onSubmit={handlePersonalSubmit}>
                                             <div className="flex items-center gap-4 mb-6">
-                                                <img
-                                                    alt="Profile"
-                                                    className="w-16 h-16 rounded-full object-cover"
-                                                />
+                                                <div className="relative">
+                                                    <Avatar className="w-16 h-16">
+                                                        <AvatarImage
+                                                            alt="Profile"
+                                                            src={
+                                                                profileImage 
+                                                                    ? (profileImage.startsWith('data:') 
+                                                                        ? profileImage 
+                                                                        : `/storage/${profileImage}`)
+                                                                    : undefined
+                                                            }
+                                                            className="rounded-full object-cover border"
+                                                        />
+                                                        <AvatarFallback className="rounded-full bg-gray-200 text-gray-600 flex items-center justify-center text-sm font-semibold">
+                                                            {auth.user.name ? auth.user.name.charAt(0).toUpperCase() : 'U'}
+                                                        </AvatarFallback>
+                                                    </Avatar>
+                                                    {editPersonal && (
+                                                        <button
+                                                            type="button"
+                                                            className="absolute bottom-0 right-0 bg-blue-600 text-white rounded-full p-1 text-xs hover:bg-blue-700"
+                                                            onClick={() => fileInputRef.current?.click()}
+                                                            title="Change profile picture"
+                                                        >
+                                                            Edit
+                                                        </button>
+                                                    )}
+                                                    <input
+                                                        type="file"
+                                                        accept="image/*"
+                                                        ref={fileInputRef}
+                                                        style={{ display: 'none' }}
+                                                        onChange={e => {
+                                                            const file = e.target.files?.[0];
+                                                            if (file) {
+                                                                // ✅ WAJIB
+                                                                setPersonalData('avatar', file);
+                                                                const reader = new FileReader();
+                                                                reader.onload = ev => setProfileImage(ev.target?.result as string);
+                                                                reader.readAsDataURL(file);
+                                                            }
+                                                        }}
+                                                    />
+                                                </div>
                                                 <div>
                                                     <div className="font-semibold text-base">{auth.user.name}</div>
                                                     <div className="text-gray-500 text-sm">{auth.user.username}</div>
@@ -269,22 +360,22 @@ export default function Profile() {
                                                     <input
                                                         className="w-full border rounded px-3 py-2 text-sm"
                                                         name="name"
-                                                        value={data.name}
-                                                        onChange={e => setData('name', e.target.value)}
+                                                        value={personalData.name}
+                                                        onChange={e => setPersonalData('name', e.target.value)}
                                                         readOnly={!editPersonal}
                                                     />
-                                                    {errors.name && <div className="text-red-500 text-xs">{errors.name}</div>}
+                                                    {personalErrors.name && <div className="text-red-500 text-xs">{personalErrors.name}</div>}
                                                 </div>
                                                 <div>
                                                     <label className="block text-sm font-medium text-gray-700 mb-1">Username</label>
                                                     <input
                                                         className="w-full border rounded px-3 py-2 text-sm"
                                                         name="username"
-                                                        value={data.username}
-                                                        onChange={e => setData('username', e.target.value)}
+                                                        value={personalData.username}
+                                                        onChange={e => setPersonalData('username', e.target.value)}
                                                         readOnly={!editPersonal}
                                                     />
-                                                    {errors.username && <div className="text-red-500 text-xs">{errors.username}</div>}
+                                                    {personalErrors.username && <div className="text-red-500 text-xs">{personalErrors.username}</div>}
                                                 </div>
                                                 <div>
                                                     <label className="block text-sm font-medium text-gray-700 mb-1">Gender</label>
@@ -292,8 +383,8 @@ export default function Profile() {
                                                         <select
                                                             name="gender"
                                                             className="w-full border rounded px-3 py-2 text-sm"
-                                                            value={data.gender}
-                                                            onChange={e => setData('gender', e.target.value)}
+                                                            value={personalData.gender}
+                                                            onChange={e => setPersonalData('gender', e.target.value)}
                                                         >
                                                             <option value="">Select Gender</option>
                                                             <option value="Female">Female</option>
@@ -303,56 +394,56 @@ export default function Profile() {
                                                     ) : (
                                                         <input
                                                             className="w-full border rounded px-3 py-2 text-sm"
-                                                            value={data.gender}
+                                                            value={personalData.gender}
                                                             readOnly
                                                         />
                                                     )}
-                                                    {errors.gender && <div className="text-red-500 text-xs">{errors.gender}</div>}
+                                                    {personalErrors.gender && <div className="text-red-500 text-xs">{personalErrors.gender}</div>}
                                                 </div>
                                                 <div>
                                                     <label className="block text-sm font-medium text-gray-700 mb-1">Date of Birth</label>
                                                     <input
                                                         type="date"
                                                         className="w-full border rounded px-3 py-2 text-sm"
-                                                        name="dob"
-                                                        value={data.date_of_birth}
-                                                        onChange={e => setData('date_of_birth', e.target.value)}
+                                                        name="date_of_birth"
+                                                        value={personalData.date_of_birth}
+                                                        onChange={e => setPersonalData('date_of_birth', e.target.value)}
                                                         readOnly={!editPersonal}
                                                     />
-                                                    {errors.date_of_birth && <div className="text-red-500 text-xs">{errors.date_of_birth}</div>}
+                                                    {personalErrors.date_of_birth && <div className="text-red-500 text-xs">{personalErrors.date_of_birth}</div>}
                                                 </div>
                                                 <div>
                                                     <label className="block text-sm font-medium text-gray-700 mb-1">Province</label>
                                                     <input
                                                         className="w-full border rounded px-3 py-2 text-sm"
                                                         name="province"
-                                                        value={data.province}
-                                                        onChange={e => setData('province', e.target.value)}
+                                                        value={personalData.province}
+                                                        onChange={e => setPersonalData('province', e.target.value)}
                                                         readOnly={!editPersonal}
                                                     />
-                                                    {errors.province && <div className="text-red-500 text-xs">{errors.province}</div>}
+                                                    {personalErrors.province && <div className="text-red-500 text-xs">{personalErrors.province}</div>}
                                                 </div>
                                                 <div>
                                                     <label className="block text-sm font-medium text-gray-700 mb-1">City</label>
                                                     <input
                                                         className="w-full border rounded px-3 py-2 text-sm"
                                                         name="city"
-                                                        value={data.city}
-                                                        onChange={e => setData('city', e.target.value)}
+                                                        value={personalData.city}
+                                                        onChange={e => setPersonalData('city', e.target.value)}
                                                         readOnly={!editPersonal}
                                                     />
-                                                    {errors.city && <div className="text-red-500 text-xs">{errors.city}</div>}
+                                                    {personalErrors.city && <div className="text-red-500 text-xs">{personalErrors.city}</div>}
                                                 </div>
                                                 <div className="md:col-span-2">
                                                     <label className="block text-sm font-medium text-gray-700 mb-1">Address</label>
                                                     <input
                                                         className="w-full border rounded px-3 py-2 text-sm"
                                                         name="address"
-                                                        value={data.address}
-                                                        onChange={e => setData('address', e.target.value)}
+                                                        value={personalData.address}
+                                                        onChange={e => setPersonalData('address', e.target.value)}
                                                         readOnly={!editPersonal}
                                                     />
-                                                    {errors.address && <div className="text-red-500 text-xs">{errors.address}</div>}
+                                                    {personalErrors.address && <div className="text-red-500 text-xs">{personalErrors.address}</div>}
                                                 </div>
                                             </div>
                                             {editPersonal && (
@@ -360,9 +451,9 @@ export default function Profile() {
                                                     <button
                                                         type="submit"
                                                         className="bg-blue-600 text-white px-4 py-2 rounded font-semibold hover:bg-blue-700 transition text-sm"
-                                                        disabled={processing}
+                                                        disabled={personalProcessing}
                                                     >
-                                                        {processing ? 'Saving...' : 'Save Changes'}
+                                                        {personalProcessing ? 'Saving...' : 'Save Changes'}
                                                     </button>
                                                 </div>
                                             )}
@@ -394,33 +485,33 @@ export default function Profile() {
                                                     <input
                                                         className="w-full border rounded px-3 py-2 text-sm"
                                                         name="email"
-                                                        value={data.email}
-                                                        onChange={e => setData('email', e.target.value)}
+                                                        value={accountData.email}
+                                                        onChange={e => setAccountData('email', e.target.value)}
                                                         readOnly={!editAccount}
                                                     />
-                                                    {errors.email && <div className="text-red-500 text-xs">{errors.email}</div>}
+                                                    {accountErrors.email && <div className="text-red-500 text-xs">{accountErrors.email}</div>}
                                                 </div>
                                                 <div>
                                                     <label className="block text-sm font-medium text-gray-700 mb-1">Backup Email</label>
                                                     <input
                                                         className="w-full border rounded px-3 py-2 text-sm"
                                                         name="backup_email"
-                                                        value={data.backup_email}
-                                                        onChange={e => setData('backup_email', e.target.value)}
+                                                        value={accountData.backup_email}
+                                                        onChange={e => setAccountData('backup_email', e.target.value)}
                                                         readOnly={!editAccount}
                                                     />
-                                                    {errors.backup_email && <div className="text-red-500 text-xs">{errors.backup_email}</div>}
+                                                    {accountErrors.backup_email && <div className="text-red-500 text-xs">{accountErrors.backup_email}</div>}
                                                 </div>
                                                 <div>
                                                     <label className="block text-sm font-medium text-gray-700 mb-1">Phone Number</label>
                                                     <input
                                                         className="w-full border rounded px-3 py-2 text-sm"
                                                         name="phone"
-                                                        value={data.phone}
-                                                        onChange={e => setData('phone', e.target.value)}
+                                                        value={accountData.phone}
+                                                        onChange={e => setAccountData('phone', e.target.value)}
                                                         readOnly={!editAccount}
                                                     />
-                                                    {errors.phone && <div className="text-red-500 text-xs">{errors.phone}</div>}
+                                                    {accountErrors.phone && <div className="text-red-500 text-xs">{accountErrors.phone}</div>}
                                                 </div>
                                                 <div>
                                                 </div>
@@ -441,9 +532,9 @@ export default function Profile() {
                                                     <button
                                                         type="submit"
                                                         className="bg-blue-600 text-white px-4 py-2 rounded font-semibold hover:bg-blue-700 transition text-sm"
-                                                        disabled={processing}
+                                                        disabled={accountProcessing}
                                                     >
-                                                        {processing ? 'Updating...' : 'Update Security'}
+                                                        {accountProcessing ? 'Updating...' : 'Update Security'}
                                                     </button>
                                                 </div>
                                             )}
@@ -456,7 +547,7 @@ export default function Profile() {
                                 {/* Right Column */}
                                 <div className="flex flex-col gap-8 w-full lg:w-80">
                                     {/* News Preferences */}
-                                    <section className="bg-white rounded-xl shadow p-6">
+                                    {/* <section className="bg-white rounded-xl shadow p-6">
                                         <div className="flex items-center justify-between mb-4">
                                             <h2 className="font-semibold text-lg">News Preferences</h2>
                                             <button
@@ -524,7 +615,7 @@ export default function Profile() {
                                                 <div className="text-green-600 text-sm mt-2 text-right">Preferences saved!</div>
                                             )}
                                         </form>
-                                    </section>
+                                    </section> */}
                                 </div>
                             </div>
                         </div>

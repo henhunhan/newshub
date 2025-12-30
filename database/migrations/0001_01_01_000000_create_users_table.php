@@ -24,6 +24,7 @@ return new class extends Migration
 
             $table->string('backup_email')->nullable();
             $table->string('phone')->nullable();
+            $table->string('avatar')->nullable();
 
 
             $table->timestamp('email_verified_at')->nullable();
