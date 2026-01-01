@@ -7,6 +7,8 @@ use App\Models\Category;
 use App\Models\Article;
 use Illuminate\Http\Request;
 use App\Models\Comment;
+use App\Http\Controllers\ArticleLikeController;
+use Illuminate\Support\Facades\DB;
 
 
 Route::get('/', function (Request $request) {
@@ -40,29 +42,59 @@ Route::middleware(['auth', 'verified'])->group(function () {
 });
 
 
-Route::get('/newspage/{slug}', function ($slug) {
-    $news = \App\Models\Article::where('slug', $slug)->firstOrFail();
-    $categories = \App\Models\Category::all();
-    $comments = \App\Models\Comment::with('user')->where('article_id', $news->id)->orderBy('created_at', 'desc')->get();
+Route::get('/newspage/{slug}', function (Request $request, $slug) {
 
-    // Popular News: seluruh berita dari database, urut terbaru, kecuali berita yang sedang dibuka
-    $popularNews = \App\Models\Article::where('id', '!=', $news->id)
-        ->orderBy('published_at', 'desc')
+    $news = Article::where('slug', $slug)->firstOrFail();
+
+    // 🔥 Tambah view_count (1x per session)
+    $sessionKey = 'viewed_article_' . $news->id;
+
+    if (! $request->session()->has($sessionKey)) {
+        $news->increment('view_count');
+        $request->session()->put($sessionKey, true);
+    }
+
+    $categories = Category::all();
+
+    $comments = Comment::with('user')
+        ->where('article_id', $news->id)
+        ->orderBy('created_at', 'desc')
         ->get();
 
-    // Related News: berita lain dengan kategori sama, kecuali berita yang sedang dibuka
-    $relatedNews = \App\Models\Article::where('category', $news->category)
+    // Popular News
+    $popularNews = Article::where('id', '!=', $news->id)
+        ->orderByDesc('view_count')
+        ->take(5)
+        ->get();
+
+    // Related News
+    $relatedNews = Article::where('category', $news->category)
         ->where('id', '!=', $news->id)
-        ->orderBy('published_at', 'desc')
+        ->orderByDesc('published_at')
+        ->take(5)
         ->get();
+
+    // ✅ CEK APAKAH USER SUDAH LIKE
+    $isLiked = false;
+
+    if (Auth::check()) {
+        $isLiked = DB::table('article_likes')
+            ->where('article_id', $news->id)
+            ->where('user_id', Auth::id())
+            ->exists();
+    }
+
+    // Tambahkan ke object news
+    $news->is_liked = $isLiked;
 
     return Inertia::render('newspage', [
         'news' => $news,
         'categories' => $categories,
         'popularNews' => $popularNews,
         'relatedNews' => $relatedNews,
-        'comments' => $comments, // tambahkan ini agar comments dikirim ke frontend
+        'comments' => $comments,
     ]);
+
 })->name('newspage');
 
 Route::get('/categories', function () {
@@ -115,6 +147,36 @@ Route::post('/newspage/{slug}/comment', function (Request $request, $slug) {
     ]);
     return redirect()->route('newspage', ['slug' => $news->slug]);
 })->middleware('auth')->name('comments');
+
+Route::post('/articles/{article}/like', function (Article $article) {
+
+    $userId = Auth::id();
+
+    $liked = DB::table('article_likes')
+        ->where('article_id', $article->id)
+        ->where('user_id', $userId)
+        ->first();
+
+    if ($liked) {
+        // UNLIKE
+        DB::table('article_likes')->where('id', $liked->id)->delete();
+        $article->decrement('like_count');
+    } else {
+        // LIKE
+        DB::table('article_likes')->insert([
+            'article_id' => $article->id,
+            'user_id' => $userId,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+        $article->increment('like_count');
+    }
+
+    return back();
+
+})->middleware('auth')->name('articles.like');
+
+
 
 
 require __DIR__.'/settings.php';

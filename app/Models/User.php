@@ -27,6 +27,7 @@ class User extends Authenticatable
         'avatar',
         'backup_email',
         'phone',
+        'password',
     ];
 
 
@@ -58,5 +59,12 @@ class User extends Authenticatable
     {
         return $this->hasMany(Comment::class);
     }
+
+    public function likedArticles()
+    {
+        return $this->belongsToMany(Article::class, 'article_likes')
+                    ->withTimestamps();
+    }
+
 
 }

@@ -5,6 +5,8 @@ import { UserInfo } from '@/components/user-info';
 import { useState, useRef, useEffect } from 'react';
 import { router } from '@inertiajs/react';
 import type { Auth } from '@/types';
+import { Heart } from 'lucide-react';
+
 
 type NewsType = {
     id: number;
@@ -16,6 +18,9 @@ type NewsType = {
     created_at?: string;
     content?: string;
     slug: string;
+    view_count: number;
+    like_count: number;
+    is_liked: boolean;
 };
 
 type Category = {
@@ -188,6 +193,30 @@ export default function Newspage({ news, popularNews = [], relatedNews = [], com
                                 <span className="text-gray-400 text-xs">
                                     {news.created_at ? new Date(news.created_at).toLocaleDateString() : ''}
                                 </span>
+                                    <div className="flex items-center gap-4">
+                                        <span className="text-gray-400 text-xs">
+                                            {news.view_count} views
+                                        </span>
+
+                                        <button
+                                            onClick={() =>
+                                                router.post(route('articles.like', news.id), {}, {
+                                                    preserveScroll: true,
+                                                })
+                                            }
+                                            className={`flex items-center gap-1 text-sm transition ${
+                                                news.is_liked ? 'text-red-600' : 'text-gray-400'
+                                            }`}
+                                        >
+                                            <Heart
+                                                className={`w-4 h-4 ${
+                                                    news.is_liked ? 'fill-red-600' : ''
+                                                }`}
+                                            />
+                                            <span>{news.like_count}</span>
+                                        </button>
+                                    </div>
+
                             </div>
                             <h1 className="text-2xl font-bold mb-2">{news.title}</h1>
                             <div className="flex items-center gap-3 mb-6">
