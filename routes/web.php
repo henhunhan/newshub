@@ -9,6 +9,7 @@ use Illuminate\Http\Request;
 use App\Models\Comment;
 use App\Http\Controllers\ArticleLikeController;
 use Illuminate\Support\Facades\DB;
+use App\Http\Controllers\ArticleController;
 
 
 Route::get('/', function (Request $request) {
@@ -18,7 +19,14 @@ Route::get('/', function (Request $request) {
               ->orWhere('content', 'like', '%' . $request->search . '%');
     }
     $categories = Category::all();
-    $news = $query->orderBy('published_at', 'desc')->get();
+    $news = Article::with('category')
+        ->when($request->search, function ($q) use ($request) {
+            $q->where('title', 'like', '%' . $request->search . '%')
+            ->orWhere('content', 'like', '%' . $request->search . '%');
+        })
+        ->orderBy('published_at', 'desc')
+        ->get();
+
         return Inertia::render('welcome', [
             'categories' => $categories, // Kirim ke komponen React
             'news' => $news,
@@ -33,18 +41,32 @@ Route::middleware(['auth', 'verified'])->group(function () {
               ->orWhere('content', 'like', '%' . $request->search . '%');
     }
         $categories = Category::all(); // Ambil semua kategori dari database
-        $news = $query->orderBy('published_at', 'desc')->get();
+        $news = Article::with('category')
+            ->when($request->search, function ($q) use ($request) {
+                $q->where('title', 'like', '%' . $request->search . '%')
+                ->orWhere('content', 'like', '%' . $request->search . '%');
+            })
+            ->orderBy('published_at', 'desc')
+            ->get();
+
+
         return Inertia::render('dashboard', [
             'categories' => $categories, // Kirim ke komponen React
             'news' => $news,
         ]);
     })->name('dashboard');
+
+    // Route untuk menyimpan artikel baru
+    Route::post('/articles', [App\Http\Controllers\ArticleController::class, 'store'])->name('articles.store');
 });
 
 
 Route::get('/newspage/{slug}', function (Request $request, $slug) {
 
-    $news = Article::where('slug', $slug)->firstOrFail();
+    $news = Article::with('category')
+    ->where('slug', $slug)
+    ->firstOrFail();
+
 
     // 🔥 Tambah view_count (1x per session)
     $sessionKey = 'viewed_article_' . $news->id;
@@ -68,7 +90,7 @@ Route::get('/newspage/{slug}', function (Request $request, $slug) {
         ->get();
 
     // Related News
-    $relatedNews = Article::where('category', $news->category)
+    $relatedNews = Article::where('category_id', $news->category_id)
         ->where('id', '!=', $news->id)
         ->orderByDesc('published_at')
         ->take(5)
@@ -107,35 +129,30 @@ Route::get('/categories', function () {
 // Route dinamis untuk detail kategori berdasarkan slug
 Route::get('/categories/{slug}', function (Request $request, $slug) {
     $category = Category::where('slug', $slug)->firstOrFail();
-    $query = \App\Models\Article::where('category', $category->name);
-    
+
+    $query = Article::where('category_id', $category->id);
 
     if ($request->search) {
-        $query->where(function($q) use ($request) {
+        $query->where(function ($q) use ($request) {
             $q->where('title', 'like', '%' . $request->search . '%')
-              ->orWhere('desc', 'like', '%' . $request->search . '%');
+              ->orWhere('content', 'like', '%' . $request->search . '%');
         });
     }
 
     $articles = $query->orderBy('published_at', 'desc')->get();
 
-    // Popular News: seluruh berita dari database, urut terbaru
-    $popularNews = \App\Models\Article::orderBy('published_at', 'desc')->get();
-
-    // Related News: berita lain dengan kategori sama, kecuali yang sedang dibuka (jika ada pencarian, related tetap semua 1 kategori)
-    $relatedNews = \App\Models\Article::where('category', $category->name)
-        ->orderBy('published_at', 'desc')
-        ->get();
-
-    $categories = Category::all();
     return Inertia::render('categories', [
-        'categories' => $categories,
-        'category' => $category,
+        'categories' => Category::all(), // ✅ NAV
+        'category' => $category,          // ✅ JUDUL & DESC
         'articles' => $articles,
-        'popularNews' => $popularNews,
-        'relatedNews' => $relatedNews,
+        'popularNews' => Article::orderByDesc('view_count')->take(5)->get(),
+        'relatedNews' => Article::where('category_id', $category->id)
+            ->orderByDesc('published_at')
+            ->take(5)
+            ->get(),
     ]);
 })->name('categories.show');
+
 
 Route::post('/newspage/{slug}/comment', function (Request $request, $slug) {
     $news = \App\Models\Article::where('slug', $slug)->firstOrFail();
@@ -175,8 +192,6 @@ Route::post('/articles/{article}/like', function (Article $article) {
     return back();
 
 })->middleware('auth')->name('articles.like');
-
-
 
 
 require __DIR__.'/settings.php';

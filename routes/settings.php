@@ -33,6 +33,13 @@ Route::middleware('auth')->group(function () {
         return Inertia::render('settings/appearance');
     })->name('appearance');
 
+    Route::get('settings/addnews', function () {
+        return Inertia::render('settings/addnews', [
+            'categories' => Category::all(),
+        ]);
+    })->name('addnews');
+
+
     /*
     |--------------------------------------------------------------------------
     | PROFILE ACTIONS

@@ -10,10 +10,15 @@ type News = {
     id: number;
     title: string;
     thumbnail_image: string;
-    category: string;
+    category: {
+        id: number;
+        name: string;
+        slug: string;
+    }
     content: string;
     author_name: string;
     slug: string;
+    published_at: string;
 };
 
 type Category = {
@@ -206,6 +211,9 @@ export default function Dashboard() {
                                                         <p className="text-black text-sm">
                                                             By {item.author_name}
                                                         </p>
+                                                    <p className="text-gray-500 text-xs">
+                                                        By {item.published_at}
+                                                    </p>
                                                     </div>
                                                 </Link>
                                             </div>
@@ -253,6 +261,9 @@ export default function Dashboard() {
                                                         <p className="text-black text-sm">
                                                             By {item.author_name}
                                                         </p>
+                                                        <p className="text-black text-sm">
+                                                            At {item.published_at}
+                                                        </p>
                                                     </div>
                                                 </Link>
                                             </div>
@@ -294,8 +305,8 @@ export default function Dashboard() {
                                                     />
                                                 </div>
                                                 <div className="p-4 flex flex-col flex-1">
-                                                    <span className={`inline-block ${news.category === 'Sports' ? 'bg-pink-100 text-pink-600' : 'bg-blue-100 text-blue-700'} text-xs font-semibold px-3 py-1 rounded mb-2 w-fit`}>
-                                                        {news.category}
+                                                    <span className={`inline-block ${news.category.id === 1 ? 'bg-pink-100 text-pink-600' : 'bg-blue-100 text-blue-700'} text-xs font-semibold px-3 py-1 rounded mb-2 w-fit`}>
+                                                        {news.category.name}
                                                     </span>
                                                     <h3 className="text-base font-bold mb-2 group-hover:text-blue-600 transition line-clamp-2">
                                                         {news.title}
@@ -305,6 +316,9 @@ export default function Dashboard() {
                                                     </p>
                                                     <p className="text-gray-500 text-xs">
                                                         By {news.author_name}
+                                                    </p>
+                                                    <p className="text-gray-500 text-xs">
+                                                        By {news.published_at}
                                                     </p>
                                                 </div>
                                             </Link>
@@ -335,8 +349,8 @@ export default function Dashboard() {
                                                 />
                                             </div>
                                             <div className="p-4 flex flex-col flex-1">
-                                                <span className={`inline-block ${news.category === 'Sports' ? 'bg-pink-100 text-pink-600' : 'bg-blue-100 text-blue-700'} text-xs font-semibold px-3 py-1 rounded mb-2 w-fit`}>
-                                                    {news.category}
+                                                <span className={`inline-block ${news.category.id === 1 ? 'bg-pink-100 text-pink-600' : 'bg-blue-100 text-blue-700'} text-xs font-semibold px-3 py-1 rounded mb-2 w-fit`}>
+                                                    {news.category.name}
                                                 </span>
                                                 <h3 className="text-base font-bold mb-2 group-hover:text-blue-600 transition line-clamp-2">
                                                     {news.title}

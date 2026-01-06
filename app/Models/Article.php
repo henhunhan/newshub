@@ -8,19 +8,18 @@ class Article extends Model
 {
     protected $table = 'articles'; // penting kalau nama tabel bukan "articles"
 
-    public $timestamps = false; // ✅ INI SOLUSINYA
+    public $timestamps = false;
 
     protected $fillable = [
-        'category',
         'title',
         'slug',
         'content',
+        'category_id',
+        'user_id',
         'thumbnail_image',
-        'published_at',
-        'status',
-        'view_count',
-        'created_at',
         'author_name',
+        'published_at',
+        'view_count',
         'like_count',
     ];
 
@@ -33,4 +32,15 @@ class Article extends Model
     {
         return $this->hasMany(Comment::class);
     }
+
+    public function getThumbnailImageAttribute($value)
+    {
+        return $value ? asset('storage/' . $value) : null;
+    }
+
+    public function category()
+    {
+        return $this->belongsTo(Category::class);
+    }
+
 }

@@ -120,6 +120,7 @@ const {
     const sidebarNavItems = [
         { title: 'Profile', href: '/settings/profile' },
         { title: 'Password', href: '/settings/password' },
+        { title: 'Add News', href: '/settings/addnews' },
     ];
     const currentPath = typeof window !== 'undefined' ? window.location.pathname : '';
 
