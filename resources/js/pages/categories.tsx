@@ -14,6 +14,7 @@ type Article = {
     author_name: string;
     slug: string;
     content: string;
+    published_at: string;
 };
 
 type Category = {
@@ -227,6 +228,9 @@ export default function Categories() {
                                                         <p className="text-black text-sm">
                                                             By {article.author_name}
                                                         </p>
+                                                        <p className="text-black text-sm">
+                                                            By {article.published_at}
+                                                        </p>
                                                     </div>
                                                 </Link>
 
@@ -337,7 +341,7 @@ export default function Categories() {
                 </main>
 
                 {/* Footer */}
-                <footer className="bg-gray-900 text-white py-10 mt-auto">
+                {/* <footer className="bg-gray-900 text-white py-10 mt-auto">
                     <div className="max-w-7xl mx-auto px-6 flex flex-col md:flex-row justify-between gap-12">
                         <div>
                             <span className="text-2xl font-bold text-blue-400">NewsHub</span>
@@ -346,7 +350,7 @@ export default function Categories() {
                             </p>
                         </div>
                     </div>
-                </footer>
+                </footer> */}
             </div>
         </>
     );

@@ -6,13 +6,20 @@ import { useState, useRef, useEffect } from 'react';
 import { router } from '@inertiajs/react';
 import type { Auth } from '@/types';
 import { Heart } from 'lucide-react';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+
+
 
 
 type NewsType = {
     id: number;
     title: string;
     thumbnail_image: string;
-    category: string;
+        category: {
+        id: number;
+        name: string;
+        slug: string;
+    } | null;
     desc: string;
     author: string;
     created_at?: string;
@@ -36,6 +43,7 @@ type CommentType = {
     user: {
         name: string;
         email: string;
+        avatar: string;
     };
 };
 
@@ -189,7 +197,7 @@ export default function Newspage({ news, popularNews = [], relatedNews = [], com
                     <div className="flex-1">
                         <div className="mb-8">
                             <div className="flex items-center gap-4 mb-4">
-                                <span className="bg-blue-100 text-blue-600 px-3 py-1 rounded-full text-xs font-semibold">{news.category}</span>
+                                <span className="bg-blue-100 text-blue-600 px-3 py-1 rounded-full text-xs font-semibold">{news.category?.name}</span>
                                 <span className="text-gray-400 text-xs">
                                     {news.created_at ? new Date(news.created_at).toLocaleDateString() : ''}
                                 </span>
@@ -226,7 +234,7 @@ export default function Newspage({ news, popularNews = [], relatedNews = [], com
                                 </div>
                             </div>
                             <img src={news.thumbnail_image} alt={news.title} className="w-full rounded-lg mb-6 max-h-96 object-cover" />
-                            <div className="text-gray-700 text-base mb-6 text-justify">
+                            <div className="text-gray-700 text-base mb-6 text-justify whitespace-pre-line">
                                 {news.content ? news.content : news.desc}
                             </div>
                             {/* Comment Section */}
@@ -258,6 +266,19 @@ export default function Newspage({ news, popularNews = [], relatedNews = [], com
                                         <div key={c.id} className="flex gap-3">
                                             <div className="flex-1">
                                                 <div className="flex items-center gap-2">
+                                                                                <Avatar className="w-10 h-10">
+                                        <AvatarImage
+                                            src={
+                                                c.user.avatar
+                                                    ? `/storage/${c.user.avatar}`
+                                                    : undefined
+                                            }
+                                            alt={c.user.name}
+                                        />
+                                        <AvatarFallback>
+                                            {c.user.name.charAt(0).toUpperCase()}
+                                        </AvatarFallback>
+                                    </Avatar>         
                                                     <span className="font-semibold">{c.user.name}</span>
                                                     <span className="text-gray-400 text-xs">{new Date(c.created_at).toLocaleString()}</span>
                                                 </div>
@@ -307,7 +328,7 @@ export default function Newspage({ news, popularNews = [], relatedNews = [], com
                                         <img src={item.thumbnail_image} alt={item.title} className="w-20 h-14 rounded object-cover" />
                                         <div>
                                             <div className="font-medium text-sm">{item.title}</div>
-                                            <div className="text-gray-400 text-xs">{item.category} • {item.created_at ? new Date(item.created_at).toLocaleDateString() : ''}</div>
+                                            <div className="text-gray-400 text-xs">{item.category?.name} • {item.created_at ? new Date(item.created_at).toLocaleDateString() : ''}</div>
                                         </div>
                                     </Link>
                                 ))}

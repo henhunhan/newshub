@@ -318,7 +318,7 @@ export default function Dashboard() {
                                                         By {news.author_name}
                                                     </p>
                                                     <p className="text-gray-500 text-xs">
-                                                        By {news.published_at}
+                                                        At {news.published_at}
                                                     </p>
                                                 </div>
                                             </Link>
@@ -361,6 +361,9 @@ export default function Dashboard() {
                                                 <p className="text-gray-500 text-xs">
                                                     By {news.author_name}
                                                 </p>
+                                                        <p className="text-black text-sm">
+                                                            At {news.published_at}
+                                                        </p>
                                             </div>
                                         </Link>
                                     )) : (
@@ -375,7 +378,7 @@ export default function Dashboard() {
                 </main>
 
                 {/* Footer */}
-                <footer className="bg-gray-900 text-white py-10 mt-auto">
+                {/* <footer className="bg-gray-900 text-white py-10 mt-auto">
                     <div className="max-w-7xl mx-auto px-6 flex flex-col md:flex-row justify-between gap-12">
                         <div>
                             <span className="text-2xl font-bold text-blue-400">NewsHub</span>
@@ -408,7 +411,7 @@ export default function Dashboard() {
                             </ul>
                         </div>
                     </div>
-                </footer>
+                </footer> */}
             </div>
         </>
     );

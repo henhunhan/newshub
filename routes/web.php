@@ -20,6 +20,7 @@ Route::get('/', function (Request $request) {
     }
     $categories = Category::all();
     $news = Article::with('category')
+        ->where('status', 'published')
         ->when($request->search, function ($q) use ($request) {
             $q->where('title', 'like', '%' . $request->search . '%')
             ->orWhere('content', 'like', '%' . $request->search . '%');
@@ -35,27 +36,25 @@ Route::get('/', function (Request $request) {
 
 Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/dashboard', function (Request $request) {
-        $query = \App\Models\Article::query();
-        if ($request->search) {
-            $query->where('title', 'like', '%' . $request->search . '%')
-              ->orWhere('content', 'like', '%' . $request->search . '%');
-    }
-        $categories = Category::all(); // Ambil semua kategori dari database
+
+        $categories = Category::all();
+
         $news = Article::with('category')
+            ->where('status', 'published') // ✅ FILTER UTAMA
             ->when($request->search, function ($q) use ($request) {
-                $q->where('title', 'like', '%' . $request->search . '%')
-                ->orWhere('content', 'like', '%' . $request->search . '%');
+                $q->where(function ($sub) use ($request) {
+                    $sub->where('title', 'like', '%' . $request->search . '%')
+                        ->orWhere('content', 'like', '%' . $request->search . '%');
+                });
             })
             ->orderBy('published_at', 'desc')
             ->get();
 
-
         return Inertia::render('dashboard', [
-            'categories' => $categories, // Kirim ke komponen React
+            'categories' => $categories,
             'news' => $news,
         ]);
     })->name('dashboard');
-
     // Route untuk menyimpan artikel baru
     Route::post('/articles', [App\Http\Controllers\ArticleController::class, 'store'])->name('articles.store');
 });
@@ -84,17 +83,21 @@ Route::get('/newspage/{slug}', function (Request $request, $slug) {
         ->get();
 
     // Popular News
-    $popularNews = Article::where('id', '!=', $news->id)
+    $popularNews = Article::with('category')
+        ->where('status', 'published')
+        ->where('id', '!=', $news->id)
         ->orderByDesc('view_count')
         ->take(5)
         ->get();
 
     // Related News
-    $relatedNews = Article::where('category_id', $news->category_id)
-        ->where('id', '!=', $news->id)
-        ->orderByDesc('published_at')
-        ->take(5)
-        ->get();
+$relatedNews = Article::with('category')
+    ->where('status', 'published')
+    ->where('category_id', $news->category_id)
+    ->where('id', '!=', $news->id)
+    ->orderByDesc('published_at')
+    ->take(5)
+    ->get();
 
     // ✅ CEK APAKAH USER SUDAH LIKE
     $isLiked = false;
@@ -128,9 +131,12 @@ Route::get('/categories', function () {
 
 // Route dinamis untuk detail kategori berdasarkan slug
 Route::get('/categories/{slug}', function (Request $request, $slug) {
+
     $category = Category::where('slug', $slug)->firstOrFail();
 
-    $query = Article::where('category_id', $category->id);
+    // 🔥 Artikel utama kategori (published only)
+    $query = Article::where('category_id', $category->id)
+        ->where('status', 'published');
 
     if ($request->search) {
         $query->where(function ($q) use ($request) {
@@ -139,19 +145,32 @@ Route::get('/categories/{slug}', function (Request $request, $slug) {
         });
     }
 
-    $articles = $query->orderBy('published_at', 'desc')->get();
+    $articles = $query
+        ->orderBy('published_at', 'desc')
+        ->get();
 
     return Inertia::render('categories', [
-        'categories' => Category::all(), // ✅ NAV
-        'category' => $category,          // ✅ JUDUL & DESC
+        'categories' => Category::all(), // NAV
+        'category' => $category,
         'articles' => $articles,
-        'popularNews' => Article::orderByDesc('view_count')->take(5)->get(),
-        'relatedNews' => Article::where('category_id', $category->id)
+
+        // 🔥 Popular News (published only)
+        'popularNews' => Article::with('category')
+            ->where('status', 'published')
+            ->orderByDesc('view_count')
+            ->take(5)
+            ->get(),
+
+        // 🔥 Related News (published only)
+        'relatedNews' => Article::with('category')
+            ->where('status', 'published')
+            ->where('category_id', $category->id)
             ->orderByDesc('published_at')
             ->take(5)
             ->get(),
     ]);
 })->name('categories.show');
+
 
 
 Route::post('/newspage/{slug}/comment', function (Request $request, $slug) {

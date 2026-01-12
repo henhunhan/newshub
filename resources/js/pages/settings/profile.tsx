@@ -121,6 +121,7 @@ const {
         { title: 'Profile', href: '/settings/profile' },
         { title: 'Password', href: '/settings/password' },
         { title: 'Add News', href: '/settings/addnews' },
+        { title: 'News Draft', href: '/settings/newsdraft' },
     ];
     const currentPath = typeof window !== 'undefined' ? window.location.pathname : '';
 
@@ -624,7 +625,7 @@ const {
                 </main>
 
                 {/* Footer */}
-                <footer className="bg-gray-900 text-white py-10 mt-16">
+                {/* <footer className="bg-gray-900 text-white py-10 mt-16">
                     <div className="max-w-7xl mx-auto px-6 flex flex-col md:flex-row justify-between gap-12">
                         <div>
                             <span className="text-2xl font-bold text-blue-400">NewsHub</span>
@@ -660,7 +661,7 @@ const {
                     <div className="text-center text-gray-500 text-xs mt-8">
                         © 2024 NewsHub. All rights reserved.
                     </div>
-                </footer>
+                </footer> */}
             </div>
         </>
     );

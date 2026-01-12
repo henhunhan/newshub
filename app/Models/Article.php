@@ -21,6 +21,7 @@ class Article extends Model
         'published_at',
         'view_count',
         'like_count',
+        'status',
     ];
 
     protected $casts = [

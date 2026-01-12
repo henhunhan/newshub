@@ -6,7 +6,6 @@ import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent } from '@/compon
 import React from 'react';
 import { router } from '@inertiajs/react';
 
-
 type Category = {
     id: number;
     name: string;
@@ -27,6 +26,9 @@ const handleLogout = (e: React.MouseEvent) => {
 export default function AddNews() {
     const { auth, categories } = usePage<SharedData & { categories: Category[] }>().props;
 
+    // ===== IMAGE PREVIEW STATE =====
+    const [imagePreview, setImagePreview] = React.useState<string | null>(null);
+
     // Add news form
     const {
         data: newsData,
@@ -44,6 +46,7 @@ export default function AddNews() {
     // Submit untuk add news
     const handleNewsSubmit = (e: React.FormEvent) => {
         e.preventDefault();
+
         postNews(route('articles.store'), {
             forceFormData: true,
             preserveScroll: true,
@@ -55,7 +58,15 @@ export default function AddNews() {
                     category_id: '',
                     image: null,
                 });
-                alert('News published successfully!');
+
+                // Reset preview
+                setImagePreview(null);
+
+                router.reload({
+                    only: ['drafts'],
+                });
+
+                alert('News Added to Draft!');
             },
         });
     };
@@ -64,37 +75,39 @@ export default function AddNews() {
         { title: 'Profile', href: '/settings/profile' },
         { title: 'Password', href: '/settings/password' },
         { title: 'Add News', href: '/settings/addnews' },
+        { title: 'News Draft', href: '/settings/newsdraft' },
     ];
+
     const currentPath = typeof window !== 'undefined' ? window.location.pathname : '';
 
     return (
         <>
             <Head title="Add News" />
+
             <div className="min-h-screen bg-gray-50 flex flex-col">
                 {/* Header */}
                 <header className="w-full border-gray-700 top-0 z-50">
                     <div className="w-full mx-auto px-6 py-1">
-                        {/* Top Section */}
                         <div className="flex items-center justify-between mb-6 ml-24">
-                            {/* Search & Bell */}
-                            {/* NewsHub & Tagline - tetap di tengah */}
-                            <div className="flex-1 flex flex-col items-center justify-center cursor-pointer" onClick={() => {
-                                if (auth.user) {
-                                    router.get(route('dashboard'));
-                                } else {
-                                    router.get(route('home'));
-                                }
-                            }}>
+                            <div
+                                className="flex-1 flex flex-col items-center justify-center cursor-pointer"
+                                onClick={() => {
+                                    if (auth.user) {
+                                        router.get(route('dashboard'));
+                                    } else {
+                                        router.get(route('home'));
+                                    }
+                                }}
+                            >
                                 <h1 className="text-xl font-bold text-black font-serif">NewsHub</h1>
                                 <p className="text-gray-400 italic text-sm">Your Trusted News Source</p>
                             </div>
 
-                            {/* User menu */}
                             <div className="flex items-center gap-4">
                                 {auth.user ? (
                                     <DropdownMenu>
-                                        <DropdownMenuTrigger className='flex flex-row items-center gap-3 rounded-sm py-1'>
-                                            <UserInfo user={auth.user}/>
+                                        <DropdownMenuTrigger className="flex flex-row items-center gap-3 rounded-sm py-1">
+                                            <UserInfo user={auth.user} />
                                             <ChevronsUpDown className="ml-auto size-4" />
                                         </DropdownMenuTrigger>
                                         <DropdownMenuContent align="end" className="min-w-40 rounded-lg shadow">
@@ -129,8 +142,6 @@ export default function AddNews() {
                                 )}
                             </div>
                         </div>
-
-                        {/* Logo & Tagline */}
                     </div>
                 </header>
 
@@ -140,7 +151,7 @@ export default function AddNews() {
                         {/* Sidebar */}
                         <aside className="w-full max-w-xl lg:w-56">
                             <nav className="flex flex-col space-y-1">
-                                {sidebarNavItems.map((item) => (
+                                {sidebarNavItems.map(item => (
                                     <Link
                                         key={item.href}
                                         href={item.href}
@@ -159,81 +170,136 @@ export default function AddNews() {
 
                         {/* Content */}
                         <div className="flex-1 flex flex-col gap-8">
-                            {/* Add News Heading */}
                             <div>
                                 <h1 className="text-2xl font-bold mb-1">Add News</h1>
-                                <p className="text-gray-500 mb-6">Create and publish a new news article</p>
+                                <p className="text-gray-500 mb-6">
+                                    Create and publish a new news article
+                                </p>
                             </div>
 
-                            {/* Add News Form */}
                             <section className="bg-white rounded-xl shadow p-6">
                                 <form onSubmit={handleNewsSubmit}>
                                     <div className="grid grid-cols-1 gap-4">
+                                        {/* Title */}
                                         <div>
-                                            <label className="block text-sm font-medium text-gray-700 mb-1">Title</label>
+                                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                                                Title
+                                            </label>
                                             <input
                                                 type="text"
                                                 className="w-full border rounded px-3 py-2 text-sm"
-                                                name="title"
                                                 value={newsData.title}
                                                 onChange={e => setNewsData('title', e.target.value)}
                                                 required
                                             />
-                                            {newsErrors.title && <div className="text-red-500 text-xs">{newsErrors.title}</div>}
+                                            {newsErrors.title && (
+                                                <div className="text-red-500 text-xs">
+                                                    {newsErrors.title}
+                                                </div>
+                                            )}
                                         </div>
+
+                                        {/* Category */}
                                         <div>
-                                            <label className="block text-sm font-medium text-gray-700 mb-1">Category</label>
+                                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                                                Category
+                                            </label>
                                             <select
-                                                name="category_id"
                                                 className="w-full border rounded px-3 py-2 text-sm"
                                                 value={newsData.category_id}
                                                 onChange={e => setNewsData('category_id', e.target.value)}
                                                 required
                                             >
                                                 <option value="">Select Category</option>
-                                                {categories.map((category) => (
+                                                {categories.map(category => (
                                                     <option key={category.id} value={category.id}>
                                                         {category.name}
                                                     </option>
                                                 ))}
                                             </select>
-                                            {newsErrors.category_id && <div className="text-red-500 text-xs">{newsErrors.category_id}</div>}
+                                            {newsErrors.category_id && (
+                                                <div className="text-red-500 text-xs">
+                                                    {newsErrors.category_id}
+                                                </div>
+                                            )}
                                         </div>
+
+                                        {/* Content */}
                                         <div>
-                                            <label className="block text-sm font-medium text-gray-700 mb-1">Content</label>
+                                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                                                Content
+                                            </label>
                                             <textarea
                                                 className="w-full border rounded px-3 py-2 text-sm"
-                                                name="content"
-                                                rows={10}
+                                                rows={20}
                                                 value={newsData.content}
                                                 onChange={e => setNewsData('content', e.target.value)}
                                                 required
                                             />
-                                            {newsErrors.content && <div className="text-red-500 text-xs">{newsErrors.content}</div>}
+                                            {newsErrors.content && (
+                                                <div className="text-red-500 text-xs">
+                                                    {newsErrors.content}
+                                                </div>
+                                            )}
                                         </div>
+
+                                        {/* IMAGE UPLOAD + PREVIEW */}
                                         <div>
-                                            <label className="block text-sm font-medium text-gray-700 mb-1">Image (optional)</label>
+                                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                                                Image
+                                            </label>
+
                                             <input
+                                                id="image-upload"
                                                 type="file"
                                                 accept="image/*"
-                                                className="w-full border rounded px-3 py-2 text-sm"
+                                                className="hidden"
                                                 onChange={e => {
                                                     const file = e.target.files?.[0];
                                                     if (file) {
                                                         setNewsData('image', file);
+
+                                                        const reader = new FileReader();
+                                                        reader.onloadend = () => {
+                                                            setImagePreview(reader.result as string);
+                                                        };
+                                                        reader.readAsDataURL(file);
                                                     }
                                                 }}
                                             />
-                                            {newsErrors.image && <div className="text-red-500 text-xs">{newsErrors.image}</div>}
+
+                                            <label
+                                                htmlFor="image-upload"
+                                                className="inline-flex items-center gap-2 cursor-pointer bg-blue-600 text-white text-sm px-4 py-2 rounded hover:bg-blue-700 transition"
+                                            >
+                                                Upload Image
+                                            </label>
+
+                                            {imagePreview && (
+                                                <div className="mt-4">
+                                                    <img
+                                                        src={imagePreview}
+                                                        alt="Preview"
+                                                        className="w-full max-w-sm rounded-lg border"
+                                                    />
+                                                </div>
+                                            )}
+
+                                            {newsErrors.image && (
+                                                <div className="text-red-500 text-xs mt-1">
+                                                    {newsErrors.image}
+                                                </div>
+                                            )}
                                         </div>
                                     </div>
+
                                     <div className="flex justify-end mt-6">
                                         <button
                                             type="submit"
                                             className="bg-blue-600 text-white px-6 py-2 rounded font-semibold hover:bg-blue-700 transition text-sm"
                                             disabled={newsProcessing}
                                         >
-                                            {newsProcessing ? 'Publishing...' : 'Publish News'}
+                                            {newsProcessing ? 'Adding...' : 'Add News'}
                                         </button>
                                     </div>
                                 </form>
@@ -241,45 +307,6 @@ export default function AddNews() {
                         </div>
                     </div>
                 </main>
-
-                {/* Footer */}
-                <footer className="bg-gray-900 text-white py-10 mt-16">
-                    <div className="max-w-7xl mx-auto px-6 flex flex-col md:flex-row justify-between gap-12">
-                        <div>
-                            <span className="text-2xl font-bold text-blue-400">NewsHub</span>
-                            <p className="mt-2 text-gray-400 text-sm max-w-xs">
-                                Your trusted source for breaking news, in-depth analysis, and comprehensive coverage of global events.
-                            </p>
-                            <div className="flex gap-3 mt-4">
-                                <a href="#" className="hover:text-blue-400"><i className="fab fa-facebook-f"></i></a>
-                                <a href="#" className="hover:text-blue-400"><i className="fab fa-twitter"></i></a>
-                                <a href="#" className="hover:text-blue-400"><i className="fab fa-youtube"></i></a>
-                                <a href="#" className="hover:text-blue-400"><i className="fab fa-instagram"></i></a>
-                            </div>
-                        </div>
-                        <div>
-                            <h4 className="font-semibold mb-2">Categories</h4>
-                            <ul className="text-gray-400 text-sm space-y-1">
-                                <li>Sports</li>
-                                <li>Politics</li>
-                                <li>Technology</li>
-                                <li>Business</li>
-                            </ul>
-                        </div>
-                        <div>
-                            <h4 className="font-semibold mb-2">Quick Links</h4>
-                            <ul className="text-gray-400 text-sm space-y-1">
-                                <li><a href="#" className="hover:text-blue-400">About Us</a></li>
-                                <li><a href="#" className="hover:text-blue-400">Contact</a></li>
-                                <li><a href="#" className="hover:text-blue-400">Privacy Policy</a></li>
-                                <li><a href="#" className="hover:text-blue-400">Terms of Service</a></li>
-                            </ul>
-                        </div>
-                    </div>
-                    <div className="text-center text-gray-500 text-xs mt-8">
-                        © 2024 NewsHub. All rights reserved.
-                    </div>
-                </footer>
             </div>
         </>
     );

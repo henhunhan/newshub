@@ -25,6 +25,7 @@ export default function Password() {
         { title: 'Profile', href: '/settings/profile' },
         { title: 'Password', href: '/settings/password' },
         { title: 'Add News', href: '/settings/addnews' },
+        { title: 'News Draft', href: '/settings/newsdraft' },
     ];
     const currentPath = typeof window !== 'undefined' ? window.location.pathname : '';
 
@@ -216,7 +217,7 @@ export default function Password() {
                 </main>
 
                 {/* Footer */}
-                <footer className="bg-gray-900 text-white py-10 mt-16">
+                {/* <footer className="bg-gray-900 text-white py-10 mt-16">
                     <div className="max-w-7xl mx-auto px-6 flex flex-col md:flex-row justify-between gap-12">
                         <div>
                             <span className="text-2xl font-bold text-blue-400">NewsHub</span>
@@ -249,7 +250,7 @@ export default function Password() {
                             </ul>
                         </div>
                     </div>
-                </footer>
+                </footer> */}
             </div>
         </>
     );
